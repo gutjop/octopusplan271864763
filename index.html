@@ -6,6 +6,9 @@
 <title>Octopus Planner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script defer src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
 <style>
 :root{color-scheme:light dark;--bg:#e9edf2;--card:#fbfcfd;--ink:#1b2230;--mut:#66707f;--line:#d5dbe4;--acc:#2748c9;--on:#fff;--hov:#f0f3f8}
 @media(prefers-color-scheme:dark){:root{--bg:#12151c;--card:#1a1e27;--ink:#e6e9ef;--mut:#8d96a5;--line:#2a303c;--acc:#7b93ff;--on:#0f1320;--hov:#222733}}
@@ -14,7 +17,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 'Instrument S
 h1,h2,h3{font-family:'Bricolage Grotesque',system-ui,sans-serif;margin:0;letter-spacing:-.01em}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer}
-input[type=text],input[type=date],input[type=time]{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%}
+input[type=text],input[type=date],input[type=time],input[type=password],input[type=email]{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%}
 input[type=color]{width:38px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
 :focus-visible{outline:2px solid var(--acc);outline-offset:1px}
 .app{max-width:1440px;margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
@@ -105,6 +108,10 @@ dialog::backdrop{background:#0a0e1a99}
 .blk.task{background:var(--card);border:1.5px dashed var(--c)}
 .now{position:absolute;left:48px;right:0;height:2px;background:#d6455d;pointer-events:none}
 .quote{grid-column:1/-1;margin:0;padding:2px 0 2px 16px;border-left:3px solid var(--acc);font:600 clamp(17px,2.6vw,25px)/1.3 'Bricolage Grotesque',system-ui,sans-serif;letter-spacing:-.01em}
+[hidden]{display:none!important}
+.r{display:flex;gap:8px}
+#acct.ok{color:#1f8a5b}
+#acct.bad{color:#c4314b}
 .warn{grid-column:1/-1;background:#fde8ec;color:#7a1a2d;border:1px solid #f0aebb;border-radius:10px;padding:9px 14px;font-size:14px}
 .tabs{display:grid;grid-column:1/-1;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .tabs button{border:0;background:var(--card);padding:10px;font-weight:500}
@@ -113,12 +120,13 @@ dialog::backdrop{background:#0a0e1a99}
 @media(max-width:900px){
   .app{padding:12px}
   .day{min-height:76px}.pill{font-size:11px}
-  input[type=text],input[type=date],input[type=time]{font-size:16px;padding:9px 10px}
+  input[type=text],input[type=date],input[type=time],input[type=password],input[type=email]{font-size:16px;padding:9px 10px}
 }
 @media(max-width:700px){.dyb{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.dtasks{border-right:0;border-bottom:1px solid var(--line);max-height:36dvh}}
 @media(max-width:600px){
   .app{padding:10px;gap:12px}
   .title{font-size:26px}
+  .al{display:none}
   .cbar h2{font-size:19px;margin-left:2px}
   main.card{padding:8px}
   .filters{gap:5px}
@@ -150,7 +158,7 @@ dialog::backdrop{background:#0a0e1a99}
 </head>
 <body>
 <div class="app" data-tab="cal">
-<div class="top"><h1 class="title">Octopus Planner</h1><button class="btn primary" id="add" aria-label="Add event or task">+ Add</button></div>
+<div class="top"><h1 class="title">Octopus Planner</h1><div class="r"><button class="btn" id="acct" aria-label="Account and sync">☁<span class="al"> Sign in</span></button><button class="btn primary" id="add" aria-label="Add event or task">+ Add</button></div></div>
 <blockquote class="quote" id="quote"></blockquote>
 <div class="warn" id="warn" hidden><b>Saving is blocked in this window.</b> Anything you add will be lost when you close or refresh it. Open the page in a normal browser tab (not a preview or private window) to keep your data.</div>
 <div class="tabs" id="tabs"><button class="on" data-tab="cal">Calendar</button><button data-tab="todo">To-do</button></div>
@@ -169,7 +177,7 @@ dialog::backdrop{background:#0a0e1a99}
 </aside>
 
 <footer>
-  <span>Saved in this browser.</span>
+  <span id="sv">Saved in this browser.</span>
   <button class="lnk" id="exp">Download backup</button>
   <label class="lnk" style="cursor:pointer">Restore backup<input type="file" id="imp" accept=".json" hidden></label>
 </footer>
@@ -190,6 +198,23 @@ dialog::backdrop{background:#0a0e1a99}
   </div>
   <div class="lbl">Categories<div class="chips" id="ec"></div></div>
   <div class="acts"><button class="btn danger" id="edel">Delete</button><span class="sp"></span><button class="btn" id="ecan">Cancel</button><button class="btn primary" id="esave">Save</button></div>
+</div></dialog>
+
+<dialog id="ac"><div class="dlg">
+  <h3>Use it on any computer</h3>
+  <div id="anc" class="mut" hidden>Cloud sync isn’t switched on yet. Paste your Firebase settings into <b>FIREBASE_CONFIG</b> near the top of the script in <b>index.html</b>, then reload.</div>
+  <div id="aout" hidden class="dlg" style="padding:0;width:auto">
+    <p class="mut" style="margin:0">Sign in to keep your planner in your own private cloud space and open it from any device.</p>
+    <button class="btn" id="ag">Continue with Google</button>
+    <div class="lbl">Or use email<input type="email" id="aem" placeholder="Email" autocomplete="email"><input type="password" id="apw" placeholder="Password (6+ characters)" autocomplete="current-password"></div>
+    <div class="acts"><button class="btn primary" id="asi">Sign in</button><button class="btn" id="asu">Create account</button><span class="sp"></span><button class="lnk" id="afp">Forgot password?</button></div>
+  </div>
+  <div id="ain" hidden class="dlg" style="padding:0;width:auto">
+    <p style="margin:0">Signed in as <b id="aemail"></b></p>
+    <p class="mut" style="margin:0">Your tasks and events sync automatically. Signing out removes the planner from this browser; it stays safe in your account.</p>
+    <div class="acts"><button class="btn danger" id="aso">Sign out</button><span class="sp"></span><button class="btn primary" id="acl">Done</button></div>
+  </div>
+  <div id="aerr" style="font-size:13px"></div>
 </div></dialog>
 
 <dialog id="nc"><div class="dlg">
@@ -228,6 +253,16 @@ dialog::backdrop{background:#0a0e1a99}
 </div></dialog>
 
 <script>
+/* ===== FIREBASE: paste your web app settings from the Firebase console between the quotes ===== */
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyACqbEsX085d4x5IHTNogQqkfZ_a9X0dzI",
+  authDomain:"octopusplanner.firebaseapp.com",
+  projectId:"octopusplanner",
+  storageBucket:"octopusplanner.firebasestorage.app",
+  messagingSenderId:"527643168417",
+  appId:"1:527643168417:web:9a42dacf1c4b6731592ae0"
+};
+
 const K='planner-v1',PAL=['#3b6fd4','#2f9e6e','#d6455d','#d99a1e','#8e5bd6','#14a3b8','#e2692f','#6b7a8f'],H=56;
 const $=s=>document.querySelector(s),p=n=>String(n).padStart(2,'0');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -239,7 +274,10 @@ const today=()=>ds(new Date());
 
 let S=null;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
 if(!S||!S.cats||!S.items)S={cats:['Classes','Gym & Exercise','Exams','Personal'].map((name,i)=>({id:uid(),name,color:PAL[i]})),items:[]};
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+let user=null,fb=null,unsub=null,ready=false,timer=null;
+const lset=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},lget=k=>{try{return localStorage.getItem(k)}catch(e){return null}},ldel=k=>{try{localStorage.removeItem(k)}catch(e){}};
+const persist=()=>lset(K,JSON.stringify(S));
+const save=()=>{persist();if(!user)lset(K+'-dirty','1');push()};
 
 const n0=new Date();let Y=n0.getFullYear(),M=n0.getMonth(),D=null,E=null;
 const F=new Set(),TF=new Set(),Q=new Set(),DQ=new Set(),SETS={F,TF,Q,DQ};
@@ -446,6 +484,92 @@ $('#imp').onchange=async e=>{
   }catch(err){alert('That file is not a valid planner backup.')}
   e.target.value='';
 };
+
+/* ---------- Cloud sync (Firebase) ---------- */
+const FR={
+  'auth/invalid-credential':'Wrong email or password.','auth/wrong-password':'Wrong email or password.','auth/user-not-found':'Wrong email or password.',
+  'auth/invalid-email':'That email address doesn’t look right.','auth/missing-password':'Enter your password.',
+  'auth/email-already-in-use':'An account with that email already exists. Try Sign in instead.',
+  'auth/weak-password':'Use a password with at least 6 characters.',
+  'auth/network-request-failed':'Network problem. Check your connection and try again.',
+  'auth/popup-closed-by-user':'','auth/cancelled-popup-request':'',
+  'auth/popup-blocked':'Your browser blocked the Google pop-up. Allow pop-ups for this site, or use email instead.',
+  'auth/unauthorized-domain':'This website address isn’t authorised in Firebase yet. Add it under Authentication → Settings → Authorized domains.',
+  'auth/operation-not-allowed':'This sign-in method isn’t switched on in Firebase yet.',
+  'auth/too-many-requests':'Too many attempts. Wait a minute and try again.'
+};
+const parse=s=>{try{const j=JSON.parse(s);return j&&Array.isArray(j.cats)&&Array.isArray(j.items)?j:null}catch(e){return null}};
+function merge(a,b){
+  const cats=[...b.cats],map={};
+  a.cats.forEach(c=>{const m=cats.find(x=>x.name.toLowerCase()===c.name.toLowerCase());if(m)map[c.id]=m.id;else{cats.push(c);map[c.id]=c.id}});
+  const ids=new Set(b.items.map(i=>i.id));
+  return{cats,items:[...b.items,...a.items.filter(i=>!ids.has(i.id)).map(i=>({...i,cats:i.cats.map(c=>map[c]||c)}))]};
+}
+function setStatus(st,note){
+  const m={out:['☁',' Sign in',''],saving:['☁',' Saving…',''],synced:['☁',' Synced','ok'],error:['⚠',' Problem','bad']}[st];
+  const b=$('#acct');b.innerHTML=`${m[0]}<span class="al">${m[1]}</span>`;b.className='btn '+m[2];
+  $('#sv').textContent={
+    out:'Saved in this browser only. Use the ☁ button (top right) to sign in and open it on any computer.',
+    saving:'Saving to your account…',
+    synced:'Synced to your account'+(user&&user.email?' ('+user.email+')':'')+'.',
+    error:note||'Couldn’t reach your account. Changes stay in this browser for now.'
+  }[st];
+}
+function msg(t,bad=true){const e=$('#aerr');e.textContent=t;e.style.color=bad?'#c4314b':'var(--mut)'}
+function renderAcct(){
+  $('#anc').hidden=!!fb;$('#aout').hidden=!fb||!!user;$('#ain').hidden=!user;
+  if(user)$('#aemail').textContent=user.email||user.displayName||'your account';
+}
+const write=()=>fb.db.collection('users').doc(user.uid).set({json:JSON.stringify(S),updated:firebase.firestore.FieldValue.serverTimestamp()})
+  .then(()=>{ldel(K+'-dirty');setStatus('synced')})
+  .catch(e=>{setStatus('error',e.code==='permission-denied'?'Your account can’t save yet. Publish the Firestore rules from the setup steps.':null);throw e});
+function push(){if(!user||!ready)return;setStatus('saving');clearTimeout(timer);timer=setTimeout(()=>write().catch(()=>{}),500)}
+const flush=async()=>{if(!user||!ready)return;clearTimeout(timer);try{await write()}catch(e){}};
+function onCloud(snap,u){
+  if(snap.metadata.hasPendingWrites||(snap.metadata.fromCache&&!snap.exists))return;
+  const cloud=snap.exists?parse(snap.data().json):null;
+  if(snap.exists&&!cloud){setStatus('error','Your saved data in the cloud couldn’t be read.');return}
+  if(!ready){
+    ready=true;
+    const same=lget(K+'-uid')===u.uid,dirty=lget(K+'-dirty')==='1';
+    let up=false;
+    if(!cloud)up=true;
+    else if((same&&!dirty)||!S.items.length)S=cloud;
+    else{S=merge(S,cloud);up=true}
+    lset(K+'-uid',u.uid);persist();render();
+    if(up)push();else setStatus('synced');
+  }else if(cloud){S=cloud;persist();render();setStatus('synced')}
+}
+function initCloud(){
+  setStatus('out');
+  if(!FIREBASE_CONFIG.apiKey||!window.firebase){renderAcct();return}
+  try{firebase.initializeApp(FIREBASE_CONFIG)}catch(e){renderAcct();return}
+  fb={auth:firebase.auth(),db:firebase.firestore()};
+  const em=()=>$('#aem').value.trim(),pw=()=>$('#apw').value;
+  const run=p=>{msg('');return p.catch(e=>msg(e.code in FR?FR[e.code]:(e.message||'Something went wrong.')))};
+  $('#ag').onclick=()=>run(fb.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()));
+  $('#asi').onclick=()=>run(fb.auth.signInWithEmailAndPassword(em(),pw()));
+  $('#asu').onclick=()=>run(fb.auth.createUserWithEmailAndPassword(em(),pw()));
+  $('#apw').onkeydown=e=>{if(e.key==='Enter')$('#asi').click()};
+  $('#afp').onclick=()=>{
+    if(!em()){msg('Type your email above first.');return}
+    run(fb.auth.sendPasswordResetEmail(em()).then(()=>msg('Password reset email sent. Check your inbox.',false)));
+  };
+  $('#aso').onclick=async()=>{await flush();await fb.auth.signOut();[K,K+'-uid',K+'-dirty'].forEach(ldel);location.reload()};
+  fb.auth.onAuthStateChanged(u=>{
+    user=u;ready=false;clearTimeout(timer);if(unsub){unsub();unsub=null}
+    renderAcct();
+    if(!u){setStatus('out');return}
+    if($('#ac').open)$('#ac').close();
+    setStatus('saving');
+    unsub=fb.db.collection('users').doc(u.uid).onSnapshot(s=>onCloud(s,u),
+      e=>setStatus('error',e.code==='permission-denied'?'Can’t read your account data yet. Publish the Firestore rules from the setup steps.':null));
+  });
+  renderAcct();
+}
+$('#acct').onclick=()=>{msg('');renderAcct();$('#ac').showModal()};
+$('#acl').onclick=()=>$('#ac').close();
+window.addEventListener('DOMContentLoaded',initCloud);
 
 const QUOTES=[
   "Don’t let the day go by without learning something new.",
