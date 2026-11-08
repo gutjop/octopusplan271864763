@@ -20,6 +20,7 @@ button{cursor:pointer}
 input[type=text],input[type=date],input[type=time],input[type=password],input[type=email]{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%}
 input[type=color]{width:38px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
 :focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+select{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%;font:inherit;color:inherit}
 .app{max-width:1440px;margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
 .top{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:-6px}
 .title{margin:0;font-size:32px}
@@ -120,7 +121,7 @@ dialog::backdrop{background:#0a0e1a99}
 @media(max-width:900px){
   .app{padding:12px}
   .day{min-height:76px}.pill{font-size:11px}
-  input[type=text],input[type=date],input[type=time],input[type=password],input[type=email]{font-size:16px;padding:9px 10px}
+  input[type=text],input[type=date],input[type=time],input[type=password],input[type=email],select{font-size:16px;padding:9px 10px}
 }
 @media(max-width:700px){.dyb{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.dtasks{border-right:0;border-bottom:1px solid var(--line);max-height:36dvh}}
 @media(max-width:600px){
@@ -188,10 +189,10 @@ dialog::backdrop{background:#0a0e1a99}
   <input type="text" id="et" placeholder="Title, e.g. Behavioural Economics Exam">
   <div class="row">
     <label>Date<input type="date" id="edate"></label>
-    <label>Start<input type="time" id="es"></label>
-    <label id="eew">End<input type="time" id="ee"></label>
+    <label>Start<select id="es"></select></label>
+    <label id="eew">End<select id="ee"></select></label>
   </div>
-  <div class="mut hint" id="ehint">Add a start and end time to place it on the hourly view. Leave them empty for an all-day event.</div>
+  <div class="mut hint" id="ehint">Choose a start and end time to place it on the hourly view. Leave Start on “All day” for an all-day event.</div>
   <div id="erw" class="lbl">
     <label class="chk" style="margin:0"><input type="checkbox" id="erep"> Repeat weekly (e.g. every Monday for a class)</label>
     <div id="erd" style="display:none;gap:8px;margin-top:4px"><div class="chips" id="edays"></div><label>Repeat until (optional)<input type="date" id="euntil"></label></div>
@@ -270,6 +271,13 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const ds=d=>`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
 const pd=s=>{const[a,b,c]=s.split('-');return new Date(+a,b-1,+c)};
 const tm=t=>{const[h,m]=t.split(':');return +h*60+ +m};
+const hhmm=m=>p(Math.floor(m/60))+':'+p(m%60);
+const fmtT=m=>new Date(2000,0,1,Math.floor(m/60),m%60).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+function fillTimes(sel,blank){let o=`<option value="">${blank}</option>`;for(let m=0;m<1440;m+=5)o+=`<option value="${hhmm(m)}">${fmtT(m)}</option>`;sel.innerHTML=o}
+function setT(sel,v){
+  if(v&&![...sel.options].some(o=>o.value===v)){const o=document.createElement('option');o.value=v;o.textContent=fmtT(tm(v));sel.add(o)}
+  sel.value=v||'';
+}
 const uid=()=>Math.random().toString(36).slice(2,9);
 const today=()=>ds(new Date());
 
@@ -333,7 +341,7 @@ function renderDay(scroll){
   $('#dt').textContent=pd(D).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   $('#dtl').innerHTML=tk.length?tk.map(i=>row(i,false)).join(''):'<p class="mut">No tasks for this day yet.</p>';
   $('#dtc').innerHTML=chips('DQ');
-  $('#ad').innerHTML=L.filter(i=>i.type==='event'&&!i.start).map(pill).join('');
+  {const ad=L.filter(i=>i.type==='event'&&!i.start);$('#ad').innerHTML=ad.length?'<div class="mut hint" style="margin:6px 0 0">All day</div>'+ad.map(pill).join(''):''}
   const T=L.filter(i=>i.start).map(i=>{const s=tm(i.start),e=i.end&&tm(i.end)>s?tm(i.end):s+(i.type==='event'?60:30);return{i,s,e:Math.min(Math.max(e,s+30),1440)}});
   let h='';for(let k=0;k<24;k++)h+=`<div class="hr" data-h="${k}"><span>${p(k)}:00</span></div>`;
   h+='<div class="lay">'+layout(T).map(x=>`<div class="blk ${x.i.type} ${x.i.done?'done':''}" data-e="${x.i.id}" style="--c:${col(x.i)};top:${x.s/60*H}px;height:${(x.e-x.s)/60*H-2}px;left:${x.c/x.n*100}%;width:calc(${100/x.n}% - 3px)"><b>${x.i.type==='task'&&x.i.done?'✓ ':''}${x.i.start}${x.i.type==='event'&&x.i.end?'–'+x.i.end:''}</b> ${esc(x.i.title)}</div>`).join('')+'</div>';
@@ -364,7 +372,7 @@ function openEd(o){
   E={id:o.id||null,type:o.type||'event',cats:new Set(o.cats||[])};SETS.E=E.cats;
   $('#et').value=o.title||'';
   $('#edate').value=o.date!==undefined?o.date:(E.type==='event'?today():'');
-  $('#es').value=o.start||'';$('#ee').value=o.end||'';
+  fillTimes($('#es'),'All day');fillTimes($('#ee'),'—');setT($('#es'),o.start);setT($('#ee'),o.end);
   $('#erep').checked=!!o.rep;$('#euntil').value=(o.rep&&o.rep.until)||'';
   E.days=new Set(o.rep?o.rep.days:[pd($('#edate').value||today()).getDay()]);
   document.querySelector(`input[name=ty][value=${E.type}]`).checked=true;
@@ -451,6 +459,11 @@ $('#edate').onchange=()=>{
   if(E.days.size<=1&&$('#edate').value){E.days=new Set([pd($('#edate').value).getDay()]);renderDays()}
 };
 $('#et').onkeydown=e=>{if(e.key==='Enter')$('#esave').click()};
+$('#es').onchange=()=>{
+  const s=$('#es').value,e=$('#ee').value;
+  if(!s){setT($('#ee'),'');return}
+  if(!e||e<=s)setT($('#ee'),hhmm(Math.min(tm(s)+60,1435)));
+};
 
 $('#dti').onkeydown=e=>{const t=e.target.value.trim();if(e.key==='Enter'&&t){addTask(t,D,DQ);e.target.value=''}};
 
