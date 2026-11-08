@@ -202,9 +202,11 @@ dialog::backdrop{background:#0a0e1a99}
 
 <dialog id="ac"><div class="dlg">
   <h3>Use it on any computer</h3>
+  <div id="aerr" style="font-size:14px"></div>
   <div id="anc" class="mut" hidden>Cloud sync isn’t switched on yet. Paste your Firebase settings into <b>FIREBASE_CONFIG</b> near the top of the script in <b>index.html</b>, then reload.</div>
   <div id="aout" hidden class="dlg" style="padding:0;width:auto">
     <p class="mut" style="margin:0">Sign in to keep your planner in your own private cloud space and open it from any device.</p>
+    <div id="anote" class="warn" style="font-size:13px" hidden></div>
     <button class="btn" id="ag">Continue with Google</button>
     <div class="lbl">Or use email<input type="email" id="aem" placeholder="Email" autocomplete="email"><input type="password" id="apw" placeholder="Password (6+ characters)" autocomplete="current-password"></div>
     <div class="acts"><button class="btn primary" id="asi">Sign in</button><button class="btn" id="asu">Create account</button><span class="sp"></span><button class="lnk" id="afp">Forgot password?</button></div>
@@ -214,7 +216,6 @@ dialog::backdrop{background:#0a0e1a99}
     <p class="mut" style="margin:0">Your tasks and events sync automatically. Signing out removes the planner from this browser; it stays safe in your account.</p>
     <div class="acts"><button class="btn danger" id="aso">Sign out</button><span class="sp"></span><button class="btn primary" id="acl">Done</button></div>
   </div>
-  <div id="aerr" style="font-size:13px"></div>
 </div></dialog>
 
 <dialog id="nc"><div class="dlg">
@@ -496,7 +497,13 @@ const FR={
   'auth/popup-blocked':'Your browser blocked the Google pop-up. Allow pop-ups for this site, or use email instead.',
   'auth/unauthorized-domain':'This website address isn’t authorised in Firebase yet. Add it under Authentication → Settings → Authorized domains.',
   'auth/operation-not-allowed':'This sign-in method isn’t switched on in Firebase yet.',
-  'auth/too-many-requests':'Too many attempts. Wait a minute and try again.'
+  'auth/too-many-requests':'Too many attempts. Wait a minute and try again.',
+  'auth/operation-not-supported-in-this-environment':'Google sign-in doesn’t work when the page is opened as a local file or inside a preview. Open your website link (the https://…github.io address) in a normal browser tab and try again.',
+  'auth/internal-error':'Couldn’t reach Google just now. Check your internet connection and try again, or use email and password instead.',
+  'auth/invalid-api-key':'The Firebase API key in index.html isn’t valid. Check it matches the one in the Firebase console exactly.',
+  'auth/api-key-not-valid.-please-pass-a-valid-api-key.':'The Firebase API key in index.html isn’t valid. Check it matches the one in the Firebase console exactly.',
+  'auth/configuration-not-found':'Sign-in isn’t fully set up in Firebase yet (Authentication → Get started).',
+  'auth/web-storage-unsupported':'Your browser is blocking storage, which sign-in needs. Turn off private mode or allow cookies for this site.'
 };
 const parse=s=>{try{const j=JSON.parse(s);return j&&Array.isArray(j.cats)&&Array.isArray(j.items)?j:null}catch(e){return null}};
 function merge(a,b){
@@ -546,8 +553,16 @@ function initCloud(){
   try{firebase.initializeApp(FIREBASE_CONFIG)}catch(e){renderAcct();return}
   fb={auth:firebase.auth(),db:firebase.firestore()};
   const em=()=>$('#aem').value.trim(),pw=()=>$('#apw').value;
-  const run=p=>{msg('');return p.catch(e=>msg(e.code in FR?FR[e.code]:(e.message||'Something went wrong.')))};
-  $('#ag').onclick=()=>run(fb.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()));
+  const run=p=>{msg('');return p.catch(e=>{console.error(e);msg(e.code in FR?FR[e.code]:((e.code?e.code+': ':'')+(e.message||'Something went wrong.')))})};
+  $('#ag').onclick=()=>{
+    const pr=fb.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    run(pr);msg('Opening Google… if no window appears, allow pop-ups for this site.',false);
+  };
+  const local=!/^https?:$/.test(location.protocol),framed=window.self!==window.top;
+  if(local||framed){
+    $('#anote').hidden=false;
+    $('#anote').textContent=local?'Heads up: you’re viewing a local copy of this page, and Google sign-in is blocked there. Open your website address (https://yourusername.github.io/…) in a browser and sign in from there.':'Heads up: this page is open inside a preview, where sign-in can be blocked. Open it in its own browser tab to sign in.';
+  }
   $('#asi').onclick=()=>run(fb.auth.signInWithEmailAndPassword(em(),pw()));
   $('#asu').onclick=()=>run(fb.auth.createUserWithEmailAndPassword(em(),pw()));
   $('#apw').onkeydown=e=>{if(e.key==='Enter')$('#asi').click()};
