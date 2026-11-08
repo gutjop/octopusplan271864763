@@ -17,10 +17,11 @@ button{cursor:pointer}
 input[type=text],input[type=date],input[type=time]{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%}
 input[type=color]{width:38px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
 :focus-visible{outline:2px solid var(--acc);outline-offset:1px}
-.app{max-width:1440px;margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
-header{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.title{grid-column:1/-1;margin:0 0 -6px;font-size:32px}
-header h2{font-size:21px;min-width:180px;margin-left:10px}
+.app{max-width:1440px;margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+.top{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:-6px}
+.title{margin:0;font-size:32px}
+.cbar{display:flex;align-items:center;gap:6px;margin-bottom:14px}
+.cbar h2{font-size:21px;margin-left:8px}
 .sp{flex:1}
 .btn{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px}
 .btn:hover{background:var(--hov)}
@@ -49,8 +50,8 @@ main.card{padding:14px;overflow:hidden}
 .done{text-decoration:line-through;opacity:.55}
 .more{font-size:12px;color:var(--mut);padding-left:4px}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--c);margin-left:3px}
-aside{padding:16px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
-aside h3{font-size:19px;margin-bottom:10px}
+aside{padding:20px 24px;width:100%}
+aside h3{font-size:22px;margin-bottom:12px}
 aside small{color:var(--mut);font-size:13px;margin-left:6px;font-weight:400}
 .quick{display:grid;gap:8px;margin-bottom:10px}
 .chk{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--mut);margin-bottom:4px}
@@ -60,6 +61,14 @@ aside small{color:var(--mut);font-size:13px;margin-left:6px;font-weight:400}
 .tm{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:12px;color:var(--mut)}
 .tag{border-radius:99px;padding:0 8px;font-size:12px;color:var(--ink);background:color-mix(in srgb,var(--c) 20%,transparent);border:1px solid color-mix(in srgb,var(--c) 60%,transparent)}
 .dd{color:#c4314b;font-weight:600}
+.gh{display:flex;align-items:center;gap:8px;margin:22px 0 2px;font:600 15px 'Bricolage Grotesque',system-ui,sans-serif}
+.gh:first-child{margin-top:8px}
+.gh span{font:500 12px 'Instrument Sans',system-ui,sans-serif;color:var(--mut);background:var(--hov);border-radius:99px;padding:0 8px}
+.gh.od{color:#c4314b}
+.empty{padding:44px 0;text-align:center;color:var(--mut)}
+#tl .tr{align-items:center;padding:11px 8px;border-radius:8px}
+#tl .tr:hover{background:var(--hov)}
+@media(min-width:700px){#tl .tb{display:flex;align-items:center;gap:14px}#tl .tt{flex:1;font-size:16px}#tl .tm{flex:none;justify-content:flex-end;font-size:13px}}
 .ed{background:none;border:0;color:var(--mut);padding:0 4px;font-size:15px;line-height:1.3}
 .ed:hover{color:var(--ink)}
 .mut{color:var(--mut)}
@@ -96,25 +105,21 @@ dialog::backdrop{background:#0a0e1a99}
 .blk.task{background:var(--card);border:1.5px dashed var(--c)}
 .now{position:absolute;left:48px;right:0;height:2px;background:#d6455d;pointer-events:none}
 .quote{grid-column:1/-1;margin:0;padding:2px 0 2px 16px;border-left:3px solid var(--acc);font:600 clamp(17px,2.6vw,25px)/1.3 'Bricolage Grotesque',system-ui,sans-serif;letter-spacing:-.01em}
-.tabs{display:none;grid-column:1/-1;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.warn{grid-column:1/-1;background:#fde8ec;color:#7a1a2d;border:1px solid #f0aebb;border-radius:10px;padding:9px 14px;font-size:14px}
+.tabs{display:grid;grid-column:1/-1;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .tabs button{border:0;background:var(--card);padding:10px;font-weight:500}
 .tabs button.on{background:var(--acc);color:var(--on)}
+.app[data-tab=cal] aside,.app[data-tab=todo] main{display:none}
 @media(max-width:900px){
-  .app{grid-template-columns:1fr;padding:12px}
-  aside{position:static;max-height:none}
-  .tabs{display:grid}
-  .app[data-tab=cal] aside,.app[data-tab=todo] main{display:none}
-  .day{min-height:76px}.pill{font-size:11px}header h2{min-width:0}
+  .app{padding:12px}
+  .day{min-height:76px}.pill{font-size:11px}
   input[type=text],input[type=date],input[type=time]{font-size:16px;padding:9px 10px}
 }
 @media(max-width:700px){.dyb{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.dtasks{border-right:0;border-bottom:1px solid var(--line);max-height:36dvh}}
 @media(max-width:600px){
   .app{padding:10px;gap:12px}
   .title{font-size:26px}
-  header h2{order:1;flex:1;font-size:19px;margin-left:0}
-  #add{order:2}
-  #prev,#tod,#next{order:3}
-  header .sp{display:none}
+  .cbar h2{font-size:19px;margin-left:2px}
   main.card{padding:8px}
   .filters{gap:5px}
   .dow{padding:4px 2px;font-size:11px;text-align:center}
@@ -145,19 +150,13 @@ dialog::backdrop{background:#0a0e1a99}
 </head>
 <body>
 <div class="app" data-tab="cal">
-<h1 class="title">Octopus Planner</h1>
+<div class="top"><h1 class="title">Octopus Planner</h1><button class="btn primary" id="add" aria-label="Add event or task">+ Add</button></div>
 <blockquote class="quote" id="quote"></blockquote>
-<header>
-  <button class="btn" id="prev" aria-label="Previous month">‹</button>
-  <button class="btn" id="tod">Today</button>
-  <button class="btn" id="next" aria-label="Next month">›</button>
-  <h2 id="ml"></h2>
-  <span class="sp"></span>
-  <button class="btn primary" id="add" aria-label="Add event or task">+ Add</button>
-</header>
+<div class="warn" id="warn" hidden><b>Saving is blocked in this window.</b> Anything you add will be lost when you close or refresh it. Open the page in a normal browser tab (not a preview or private window) to keep your data.</div>
 <div class="tabs" id="tabs"><button class="on" data-tab="cal">Calendar</button><button data-tab="todo">To-do</button></div>
 
 <main class="card">
+  <div class="cbar"><button class="btn" id="prev" aria-label="Previous month">‹</button><button class="btn" id="tod">Today</button><button class="btn" id="next" aria-label="Next month">›</button><h2 id="ml"></h2></div>
   <div class="filters" id="filters"></div>
   <div class="grid" id="cal"></div>
 </main>
@@ -165,13 +164,6 @@ dialog::backdrop{background:#0a0e1a99}
 <aside class="card">
   <h3>To-do <small id="cnt"></small></h3>
   <div class="filters" id="tfilters"></div>
-  <div class="quick">
-    <input type="text" id="qt" placeholder="New task, then press Enter">
-    <input type="date" id="qd" aria-label="Due date (optional)">
-    <span class="mut hint">Categories for the new task</span>
-    <div class="chips" id="qc"></div>
-    <button class="btn primary" id="qa">Add task</button>
-  </div>
   <label class="chk"><input type="checkbox" id="sd"> Show completed</label>
   <div id="tl"></div>
 </aside>
@@ -282,8 +274,8 @@ function renderTodo(){
   const L=($('#sd').checked?all:open).slice().sort((a,b)=>(a.done-b.done)||(a.date||'9999').localeCompare(b.date||'9999')||(a.start||'').localeCompare(b.start||''));
   $('#cnt').textContent=open.length+' open';
   $('#tfilters').innerHTML='<span class="mut">Show:</span>'+chips('TF',false)+(TF.size?'<button class="lnk" data-x="tclr">Clear filter</button>':'');
-  $('#tl').innerHTML=L.length?L.map(i=>row(i,true)).join(''):`<p class="mut">${TF.size?'No tasks match this filter.':'Nothing here yet. Add a task above.'}</p>`;
-  $('#qc').innerHTML=chips('Q');
+  const t=today(),G=[['Overdue',i=>!i.done&&i.date&&i.date<t],['Today',i=>!i.done&&i.date===t],['Upcoming',i=>!i.done&&i.date>t],['No date',i=>!i.done&&!i.date],['Completed',i=>i.done]];
+  $('#tl').innerHTML=L.length?G.map(([n,f])=>{const g=L.filter(f);return g.length?`<h4 class="gh${n==='Overdue'?' od':''}">${n}<span>${g.length}</span></h4>`+g.map(i=>row(i,true)).join(''):''}).join(''):`<div class="empty">${TF.size?'No tasks match this filter.':'Nothing to do. Use + Add to create a task.'}</div>`;
 }
 function layout(list){
   list.sort((a,b)=>a.s-b.s||b.e-a.e);
@@ -403,7 +395,7 @@ document.querySelectorAll('input[name=ty]').forEach(r=>r.onchange=setType);
 $('#prev').onclick=()=>shiftMonth(-1);
 $('#next').onclick=()=>shiftMonth(1);
 $('#tod').onclick=()=>{const n=new Date();Y=n.getFullYear();M=n.getMonth();renderCal()};
-$('#add').onclick=()=>openEd({type:'event'});
+$('#add').onclick=()=>openEd({type:$('.app').dataset.tab==='todo'?'task':'event'});
 $('#sd').onchange=renderTodo;
 $('#dp').onclick=()=>shiftDay(-1);
 $('#dn').onclick=()=>shiftDay(1);
@@ -421,9 +413,6 @@ $('#edate').onchange=()=>{
 };
 $('#et').onkeydown=e=>{if(e.key==='Enter')$('#esave').click()};
 
-const qadd=()=>{const t=$('#qt').value.trim();if(!t){$('#qt').focus();return}addTask(t,$('#qd').value,Q);$('#qt').value=''};
-$('#qa').onclick=qadd;
-$('#qt').onkeydown=e=>{if(e.key==='Enter')qadd()};
 $('#dti').onkeydown=e=>{const t=e.target.value.trim();if(e.key==='Enter'&&t){addTask(t,D,DQ);e.target.value=''}};
 
 $('#esave').onclick=()=>{
@@ -465,6 +454,8 @@ const QUOTES=[
   "Success is not the key to happiness. Happiness is the key to success."
 ];
 $('#quote').textContent='“'+QUOTES[Math.floor(Math.random()*QUOTES.length)]+'”';
+
+try{localStorage.setItem(K+'-test','1');localStorage.removeItem(K+'-test')}catch(e){$('#warn').hidden=false}
 
 $('#tabs').onclick=e=>{
   const b=e.target.closest('[data-tab]');if(!b)return;
