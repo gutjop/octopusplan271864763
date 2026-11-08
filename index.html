@@ -98,7 +98,7 @@ dialog::backdrop{background:#0a0e1a99}
 .dtasks{padding:16px;overflow:auto;border-right:1px solid var(--line);display:grid;gap:8px;align-content:start}
 .hours{display:flex;flex-direction:column;min-height:0}
 #ad{padding:0 12px}
-.hscroll{flex:1;overflow:auto;min-height:0}
+.hscroll{flex:1;overflow:auto;min-height:0;padding-top:10px}
 .hg{position:relative;height:calc(24*56px)}
 .hr{height:56px;border-top:1px solid var(--line);cursor:pointer;padding-left:8px;font-size:12px;color:var(--mut)}
 .hr:hover{background:var(--hov)}
@@ -339,7 +339,7 @@ function renderDay(scroll){
   h+='<div class="lay">'+layout(T).map(x=>`<div class="blk ${x.i.type} ${x.i.done?'done':''}" data-e="${x.i.id}" style="--c:${col(x.i)};top:${x.s/60*H}px;height:${(x.e-x.s)/60*H-2}px;left:${x.c/x.n*100}%;width:calc(${100/x.n}% - 3px)"><b>${x.i.type==='task'&&x.i.done?'✓ ':''}${x.i.start}${x.i.type==='event'&&x.i.end?'–'+x.i.end:''}</b> ${esc(x.i.title)}</div>`).join('')+'</div>';
   if(D===today()){const d=new Date();h+=`<div class="now" style="top:${(d.getHours()*60+d.getMinutes())/60*H}px"></div>`}
   $('#hg').innerHTML=h;
-  if(scroll)$('#hs').scrollTop=(D===today()?Math.max(new Date().getHours()-1,0):7)*H;
+  if(scroll){const first=T.length?Math.floor(Math.min(...T.map(x=>x.s))/60):(D===today()?new Date().getHours():8);$('#hs').scrollTop=Math.max(first-1,0)*H}
 }
 function render(){
   renderFilters();renderCal();renderTodo();
@@ -347,7 +347,7 @@ function render(){
   if($('#ed').open)$('#ec').innerHTML=chips('E');
 }
 
-function openDay(d){D=d;renderDay(true);if(!$('#dy').open)$('#dy').showModal()}
+function openDay(d){D=d;if(!$('#dy').open){$('#dy').showModal();if(document.activeElement)document.activeElement.blur()}renderDay(true)}
 function shiftDay(n){const x=pd(D);x.setDate(x.getDate()+n);D=ds(x);renderDay(true)}
 function shiftMonth(n){const d=new Date(Y,M+n,1);Y=d.getFullYear();M=d.getMonth();renderCal()}
 
