@@ -465,5 +465,25 @@ $('#tabs').onclick=e=>{
 
 render();
 </script>
+
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyACqbEsX085d4x5IHTNogQqkfZ_a9X0dzI",
+    authDomain: "octopusplanner.firebaseapp.com",
+    projectId: "octopusplanner",
+    storageBucket: "octopusplanner.firebasestorage.app",
+    messagingSenderId: "527643168417",
+    appId: "1:527643168417:web:9a42dacf1c4b6731592ae0"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+</script>
 </body>
 </html>
