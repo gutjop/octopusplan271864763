@@ -124,7 +124,7 @@ dialog::backdrop{background:#0a0e1a99}
   .day{min-height:76px}.pill{font-size:11px}
   input[type=text],input[type=date],input[type=time],input[type=password],input[type=email],select{font-size:16px;padding:9px 10px}
 }
-@media(max-width:700px){.dyb{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.dtasks{border-right:0;border-bottom:1px solid var(--line);max-height:36dvh}}
+@media(max-width:700px){.dyb{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.dtasks{border-right:0;border-bottom:1px solid var(--line);max-height:42dvh}}
 @media(max-width:600px){
   .app{padding:10px;gap:12px}
   .title{font-size:26px}
@@ -185,16 +185,15 @@ dialog::backdrop{background:#0a0e1a99}
 </footer>
 </div>
 
-<datalist id="tlist"></datalist>
 <dialog id="ed"><div class="dlg">
   <div class="seg"><label><input type="radio" name="ty" value="event">Event</label><label><input type="radio" name="ty" value="task">Task</label></div>
   <input type="text" id="et" placeholder="Title, e.g. Behavioural Economics Exam">
   <div class="row">
     <label>Date<input type="date" id="edate"></label>
-    <label>Start<input type="text" id="es" list="tlist" placeholder="All day" autocomplete="off"></label>
-    <label id="eew">End<input type="text" id="ee" list="tlist" placeholder="Optional" autocomplete="off"></label>
+    <label>Start<input type="text" id="es" placeholder="e.g. 14:40" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="next"></label>
+    <label id="eew">End<input type="text" id="ee" placeholder="e.g. 16:10" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"></label>
   </div>
-  <div class="mut hint" id="ehint">Type a time like <b>2:40 PM</b> or <b>14:40</b>, or pick one from the list. Leave Start empty for an all-day event.</div>
+  <div class="mut hint" id="ehint">Just type the time, like <b>14:40</b> or <b>2:40pm</b>. Leave Start empty for an all-day event.</div>
   <div id="eterr" style="font-size:13px;color:#c4314b"></div>
   <div id="erw" class="lbl">
     <label class="chk" style="margin:0"><input type="checkbox" id="erep"> Repeat weekly (e.g. every Monday for a class)</label>
@@ -241,13 +240,12 @@ dialog::backdrop{background:#0a0e1a99}
     <button class="btn" id="dn" aria-label="Next day">›</button>
     <span class="sp"></span>
     <button class="btn" id="dev">+ Event</button>
+    <button class="btn" id="dtk">+ Task</button>
     <button class="btn" id="dx" aria-label="Close">✕</button>
   </div>
   <div class="dyb">
     <section class="dtasks">
       <h3>Tasks</h3>
-      <input type="text" id="dti" placeholder="Add a task, then press Enter">
-      <div class="chips" id="dtc"></div>
       <div id="dtl"></div>
     </section>
     <section class="hours">
@@ -275,7 +273,6 @@ const ds=d=>`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
 const pd=s=>{const[a,b,c]=s.split('-');return new Date(+a,b-1,+c)};
 const tm=t=>{const[h,m]=t.split(':');return +h*60+ +m};
 const hhmm=m=>p(Math.floor(m/60))+':'+p(m%60);
-const fmtT=m=>new Date(2000,0,1,Math.floor(m/60),m%60).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}).replace(/\u202f/g,' ');
 function parseT(s){
   s=(s||'').trim();if(!s)return '';
   const m=s.toLowerCase().match(/^(\d{1,2})(?:\s*[:.h]?\s*(\d{2}))?\s*(?:([ap])\.?\s*m?\.?)?$/);
@@ -286,7 +283,7 @@ function parseT(s){
   return hhmm(hr*60+mi);
 }
 const getT=id=>parseT($('#'+id).value);
-const setT=(el,v)=>{el.value=v?fmtT(tm(v)):''};
+const setT=(el,v)=>{el.value=v||''};
 const uid=()=>Math.random().toString(36).slice(2,9);
 const today=()=>ds(new Date());
 
@@ -305,7 +302,7 @@ const col=i=>(cats(i)[0]||{}).color||'#8a8f98';
 const vis=()=>S.items.filter(i=>!F.size||i.cats.some(c=>F.has(c)));
 const WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const occurs=(i,d)=>i.rep?(d>=i.date&&(!i.rep.until||d<=i.rep.until)&&i.rep.days.includes(pd(d).getDay())):i.date===d;
-const on=d=>vis().filter(i=>occurs(i,d)).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+const on=d=>vis().filter(i=>occurs(i,d)).sort((a,b)=>(a.type==='task')-(b.type==='task')||(a.start||'').localeCompare(b.start||''));
 const chips=(k,add=true)=>S.cats.map(c=>`<button type="button" class="chip ${SETS[k].has(c.id)?'on':''}" style="--c:${c.color}" data-s="${k}" data-c="${c.id}">${esc(c.name)}</button>`).join('')+(add?`<button type="button" class="chip add" data-s="${k}" data-c="+">+ new</button>`:'');
 const tags=i=>cats(i).map(c=>`<span class="tag" style="--c:${c.color}">${esc(c.name)}</span>`).join('');
 const dl=s=>{const t=today(),n=Math.round((pd(s)-pd(t))/864e5);return n===0?'Today':n===1?'Tomorrow':n===-1?'Yesterday':pd(s).toLocaleDateString(undefined,{day:'numeric',month:'short'})};
@@ -347,9 +344,8 @@ function layout(list){
 }
 function renderDay(scroll){
   const L=on(D),tk=L.filter(i=>i.type==='task').sort((a,b)=>a.done-b.done);
-  $('#dt').textContent=pd(D).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  $('#dtl').innerHTML=tk.length?tk.map(i=>row(i,false)).join(''):'<p class="mut">No tasks for this day yet.</p>';
-  $('#dtc').innerHTML=chips('DQ');
+  $('#dt').textContent=pd(D).toLocaleDateString(undefined,matchMedia('(max-width:600px)').matches?{weekday:'short',day:'numeric',month:'short'}:{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  $('#dtl').innerHTML=tk.length?tk.map(i=>row(i,false)).join(''):'<p class="mut">No tasks for this day. Use + Task to add one.</p>';
   {const ad=L.filter(i=>i.type==='event'&&!i.start);$('#ad').innerHTML=ad.length?'<div class="mut hint" style="margin:6px 0 0">All day</div>'+ad.map(pill).join(''):''}
   const T=L.filter(i=>i.start).map(i=>{const s=tm(i.start),e=i.end&&tm(i.end)>s?tm(i.end):s+(i.type==='event'?60:30);return{i,s,e:Math.min(Math.max(e,s+30),1440)}});
   let h='';for(let k=0;k<24;k++)h+=`<div class="hr" data-h="${k}"><span>${p(k)}:00</span></div>`;
@@ -457,6 +453,7 @@ $('#dp').onclick=()=>shiftDay(-1);
 $('#dn').onclick=()=>shiftDay(1);
 $('#dx').onclick=()=>$('#dy').close();
 $('#dev').onclick=()=>openEd({type:'event',date:D});
+$('#dtk').onclick=()=>openEd({type:'task',date:D});
 $('#cdone').onclick=()=>$('#cm').close();
 $('#ca').onclick=()=>askCat(null);
 $('#nok').onclick=makeCat;
@@ -468,14 +465,14 @@ $('#edate').onchange=()=>{
   if(E.days.size<=1&&$('#edate').value){E.days=new Set([pd($('#edate').value).getDay()]);renderDays()}
 };
 $('#et').onkeydown=e=>{if(e.key==='Enter')$('#esave').click()};
-$('#tlist').innerHTML=Array.from({length:96},(_,i)=>`<option value="${fmtT(i*15)}"></option>`).join('');
 ['es','ee'].forEach(id=>{
   const el=$('#'+id);
   el.addEventListener('input',()=>{el.classList.remove('bad');$('#eterr').textContent=''});
+  el.addEventListener('focus',()=>setTimeout(()=>el.select(),0));
   el.addEventListener('change',()=>{
     const v=getT(id);
-    if(v===null){el.classList.add('bad');$('#eterr').textContent='Couldn’t read that time. Try 2:40 PM or 14:40.';return}
-    el.value=v?fmtT(tm(v)):'';
+    if(v===null){el.classList.add('bad');$('#eterr').textContent='Couldn’t read that time. Try 14:40 or 2:40pm.';return}
+    el.value=v;
     const s=getT('es'),e=getT('ee');
     if(id==='es'){
       if(!s)setT($('#ee'),'');
@@ -484,12 +481,11 @@ $('#tlist').innerHTML=Array.from({length:96},(_,i)=>`<option value="${fmtT(i*15)
   });
 });
 
-$('#dti').onkeydown=e=>{const t=e.target.value.trim();if(e.key==='Enter'&&t){addTask(t,D,DQ);e.target.value=''}};
 
 $('#esave').onclick=()=>{
   const title=$('#et').value.trim();if(!title){$('#et').focus();return}
   const ts=getT('es'),te=E.type==='event'?getT('ee'):'';
-  if(ts===null||te===null){const f=$(ts===null?'#es':'#ee');f.classList.add('bad');$('#eterr').textContent='Couldn’t read that time. Try 2:40 PM or 14:40.';f.focus();return}
+  if(ts===null||te===null){const f=$(ts===null?'#es':'#ee');f.classList.add('bad');$('#eterr').textContent='Couldn’t read that time. Try 14:40 or 2:40pm.';f.focus();return}
   let date=$('#edate').value,start=ts,end=te;
   if(E.type==='event'&&!date)date=today();
   if(end&&(!start||end<=start))end='';
