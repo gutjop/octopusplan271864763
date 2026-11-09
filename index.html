@@ -20,6 +20,7 @@ button{cursor:pointer}
 input[type=text],input[type=date],input[type=time],input[type=password],input[type=email]{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%}
 input[type=color]{width:38px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
 :focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+input.bad{border-color:#c4314b!important}
 select{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%;font:inherit;color:inherit}
 .app{max-width:1440px;margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
 .top{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:-6px}
@@ -184,15 +185,17 @@ dialog::backdrop{background:#0a0e1a99}
 </footer>
 </div>
 
+<datalist id="tlist"></datalist>
 <dialog id="ed"><div class="dlg">
   <div class="seg"><label><input type="radio" name="ty" value="event">Event</label><label><input type="radio" name="ty" value="task">Task</label></div>
   <input type="text" id="et" placeholder="Title, e.g. Behavioural Economics Exam">
   <div class="row">
     <label>Date<input type="date" id="edate"></label>
-    <label>Start<select id="es"></select></label>
-    <label id="eew">End<select id="ee"></select></label>
+    <label>Start<input type="text" id="es" list="tlist" placeholder="All day" autocomplete="off"></label>
+    <label id="eew">End<input type="text" id="ee" list="tlist" placeholder="Optional" autocomplete="off"></label>
   </div>
-  <div class="mut hint" id="ehint">Choose a start and end time to place it on the hourly view. Leave Start on “All day” for an all-day event.</div>
+  <div class="mut hint" id="ehint">Type a time like <b>2:40 PM</b> or <b>14:40</b>, or pick one from the list. Leave Start empty for an all-day event.</div>
+  <div id="eterr" style="font-size:13px;color:#c4314b"></div>
   <div id="erw" class="lbl">
     <label class="chk" style="margin:0"><input type="checkbox" id="erep"> Repeat weekly (e.g. every Monday for a class)</label>
     <div id="erd" style="display:none;gap:8px;margin-top:4px"><div class="chips" id="edays"></div><label>Repeat until (optional)<input type="date" id="euntil"></label></div>
@@ -272,12 +275,18 @@ const ds=d=>`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
 const pd=s=>{const[a,b,c]=s.split('-');return new Date(+a,b-1,+c)};
 const tm=t=>{const[h,m]=t.split(':');return +h*60+ +m};
 const hhmm=m=>p(Math.floor(m/60))+':'+p(m%60);
-const fmtT=m=>new Date(2000,0,1,Math.floor(m/60),m%60).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
-function fillTimes(sel,blank){let o=`<option value="">${blank}</option>`;for(let m=0;m<1440;m+=5)o+=`<option value="${hhmm(m)}">${fmtT(m)}</option>`;sel.innerHTML=o}
-function setT(sel,v){
-  if(v&&![...sel.options].some(o=>o.value===v)){const o=document.createElement('option');o.value=v;o.textContent=fmtT(tm(v));sel.add(o)}
-  sel.value=v||'';
+const fmtT=m=>new Date(2000,0,1,Math.floor(m/60),m%60).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}).replace(/\u202f/g,' ');
+function parseT(s){
+  s=(s||'').trim();if(!s)return '';
+  const m=s.toLowerCase().match(/^(\d{1,2})(?:\s*[:.h]?\s*(\d{2}))?\s*(?:([ap])\.?\s*m?\.?)?$/);
+  if(!m)return null;
+  let hr=+m[1];const mi=m[2]?+m[2]:0,ap=m[3];
+  if(ap){if(hr<1||hr>12)return null;hr=hr%12+(ap==='p'?12:0)}
+  if(hr>23||mi>59)return null;
+  return hhmm(hr*60+mi);
 }
+const getT=id=>parseT($('#'+id).value);
+const setT=(el,v)=>{el.value=v?fmtT(tm(v)):''};
 const uid=()=>Math.random().toString(36).slice(2,9);
 const today=()=>ds(new Date());
 
@@ -372,7 +381,7 @@ function openEd(o){
   E={id:o.id||null,type:o.type||'event',cats:new Set(o.cats||[])};SETS.E=E.cats;
   $('#et').value=o.title||'';
   $('#edate').value=o.date!==undefined?o.date:(E.type==='event'?today():'');
-  fillTimes($('#es'),'All day');fillTimes($('#ee'),'—');setT($('#es'),o.start);setT($('#ee'),o.end);
+  setT($('#es'),o.start);setT($('#ee'),o.end);$('#eterr').textContent='';['es','ee'].forEach(i=>$('#'+i).classList.remove('bad'));
   $('#erep').checked=!!o.rep;$('#euntil').value=(o.rep&&o.rep.until)||'';
   E.days=new Set(o.rep?o.rep.days:[pd($('#edate').value||today()).getDay()]);
   document.querySelector(`input[name=ty][value=${E.type}]`).checked=true;
@@ -459,17 +468,29 @@ $('#edate').onchange=()=>{
   if(E.days.size<=1&&$('#edate').value){E.days=new Set([pd($('#edate').value).getDay()]);renderDays()}
 };
 $('#et').onkeydown=e=>{if(e.key==='Enter')$('#esave').click()};
-$('#es').onchange=()=>{
-  const s=$('#es').value,e=$('#ee').value;
-  if(!s){setT($('#ee'),'');return}
-  if(!e||e<=s)setT($('#ee'),hhmm(Math.min(tm(s)+60,1435)));
-};
+$('#tlist').innerHTML=Array.from({length:96},(_,i)=>`<option value="${fmtT(i*15)}"></option>`).join('');
+['es','ee'].forEach(id=>{
+  const el=$('#'+id);
+  el.addEventListener('input',()=>{el.classList.remove('bad');$('#eterr').textContent=''});
+  el.addEventListener('change',()=>{
+    const v=getT(id);
+    if(v===null){el.classList.add('bad');$('#eterr').textContent='Couldn’t read that time. Try 2:40 PM or 14:40.';return}
+    el.value=v?fmtT(tm(v)):'';
+    const s=getT('es'),e=getT('ee');
+    if(id==='es'){
+      if(!s)setT($('#ee'),'');
+      else if(!e||e<=s)setT($('#ee'),hhmm(Math.min(tm(s)+60,1435)));
+    }
+  });
+});
 
 $('#dti').onkeydown=e=>{const t=e.target.value.trim();if(e.key==='Enter'&&t){addTask(t,D,DQ);e.target.value=''}};
 
 $('#esave').onclick=()=>{
   const title=$('#et').value.trim();if(!title){$('#et').focus();return}
-  let date=$('#edate').value,start=$('#es').value,end=E.type==='event'?$('#ee').value:'';
+  const ts=getT('es'),te=E.type==='event'?getT('ee'):'';
+  if(ts===null||te===null){const f=$(ts===null?'#es':'#ee');f.classList.add('bad');$('#eterr').textContent='Couldn’t read that time. Try 2:40 PM or 14:40.';f.focus();return}
+  let date=$('#edate').value,start=ts,end=te;
   if(E.type==='event'&&!date)date=today();
   if(end&&(!start||end<=start))end='';
   const u=$('#euntil').value;
@@ -571,10 +592,19 @@ function initCloud(){
     const pr=fb.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
     run(pr);msg('Opening Google… if no window appears, allow pop-ups for this site.',false);
   };
-  const local=!/^https?:$/.test(location.protocol),framed=window.self!==window.top;
-  if(local||framed){
+  const ua=navigator.userAgent,local=!/^https?:$/.test(location.protocol),framed=window.self!==window.top;
+  const inapp=/FBAN|FBAV|FB_IAB|FBIOS|Messenger|Instagram|Snapchat|TikTok|musical_ly|LinkedInApp|MicroMessenger|Line\//i.test(ua)||/; wv\)/.test(ua);
+  if(local||inapp||framed){
     $('#anote').hidden=false;
-    $('#anote').textContent=local?'Heads up: you’re viewing a local copy of this page, and Google sign-in is blocked there. Open your website address (https://yourusername.github.io/…) in a browser and sign in from there.':'Heads up: this page is open inside a preview, where sign-in can be blocked. Open it in its own browser tab to sign in.';
+    $('#anote').innerHTML=local?'Heads up: you’re viewing a local copy of this page, and Google sign-in is blocked there. Open your website address (https://yourusername.github.io/…) in a browser and sign in from there.'
+      :inapp?'Heads up: you’re inside an in-app browser (like Messenger or Instagram), and Google sign-in doesn’t work there. Open this page in <b>Safari</b> or <b>Chrome</b> instead: tap the ⋯ or share button and choose “Open in Safari” / “Open in browser”. <button class="lnk" id="acopy" type="button">Copy link</button>'
+      :'Heads up: this page is open inside a preview, where sign-in can be blocked. Open it in its own browser tab to sign in.';
+    const c=$('#acopy');
+    if(c)c.onclick=()=>{
+      const done=()=>c.textContent='Copied ✓';
+      if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(location.href).then(done).catch(()=>c.textContent=location.href);
+      else c.textContent=location.href;
+    };
   }
   $('#asi').onclick=()=>run(fb.auth.signInWithEmailAndPassword(em(),pw()));
   $('#asu').onclick=()=>run(fb.auth.createUserWithEmailAndPassword(em(),pw()));
