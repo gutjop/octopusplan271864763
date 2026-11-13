@@ -335,7 +335,6 @@ input[type=date].sdt{width:150px;flex:none;padding:5px 8px;font-size:13px}
   </div>
   <div class="mut hint" id="ehint">Just type the time, like <b>14:40</b> or <b>2:40pm</b>. Leave Start empty for an all-day event.</div>
   <div id="eterr" style="font-size:13px;color:#c4314b"></div>
-  <div id="epart" class="lbl">Part of master task<select id="em"></select></div>
   <div id="emi" class="mbox" hidden><div class="mk"><i class="dm"></i>Part of a master task</div><b id="emt"></b><span id="emd" class="mut"></span><div class="mgo"><button type="button" class="btn" id="eopen">Open master task ↗</button></div></div>
   <div id="erw" class="lbl">
     <label class="chk" style="margin:0"><input type="checkbox" id="erep"> Repeat weekly (e.g. every Monday for a class)</label>
@@ -563,7 +562,8 @@ function catPage(c){
   const first=new Date(CY,CM,1),off=(first.getDay()+6)%7,t=today();
   const inMonth=CSEL&&CSEL.slice(0,7)===`${CY}-${p(CM+1)}`;
   const sel=inMonth?CSEL:(t.slice(0,7)===`${CY}-${p(CM+1)}`?t:ds(first));
-  const evOn=s=>mine.filter(i=>i.type==='event'&&occurs(i,s)).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+  const inCat=S.items.filter(i=>i.cats.includes(c.id)||(i.master&&mt(i.master)&&mt(i.master).cats.includes(c.id)));
+  const evOn=s=>inCat.filter(i=>occurs(i,s)&&!(i.type!=='event'&&i.done)).sort((a,b)=>rank(a)-rank(b)||(a.start||'').localeCompare(b.start||''));
   let g=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div class="dow">${d}</div>`).join('');
   for(let i=0;i<42;i++){
     const d=new Date(CY,CM,1-off+i),s=ds(d),L=evOn(s);
@@ -582,7 +582,7 @@ function catPage(c){
   const open=mine.filter(i=>i.type!=='event'&&!i.done).length;
   return `<div class="cbk"><button class="btn" data-ca="all">‹ All categories</button><div class="cttl"><i class="sw" style="--c:${c.color};width:20px;height:20px"></i><h1>${esc(c.name)}</h1></div><button class="btn" data-ca="edit">Edit category</button></div>
 <section class="card nb"><div class="nrow"><h2>Notes</h2><span class="mut" id="nwc">${NX?words(c.notes||'')+' words · ':''}Saves as you type</span><button class="btn xp" data-ca="expand">${NX?'Collapse '+CHEVUP:'Expand '+CHEV}</button></div><div class="nwrap${NX?'':' clip'}"><textarea id="cnotes" aria-label="Notes" placeholder="Write anything about ${esc(c.name)}: plans, links, reading lists…">${esc(c.notes||'')}</textarea></div></section>
-<div class="cg2"><section class="card"><div class="cbar2"><button class="btn" data-ca="cprev" aria-label="Previous month">‹</button><button class="btn" data-ca="ctoday">Today</button><button class="btn" data-ca="cnext" aria-label="Next month">›</button><h2>${label}</h2><span class="mut">Events in this category</span></div><div class="grid" id="ccal">${g}</div><div class="cdet"><h3>${pd(sel).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'long'})}</h3>${det.map(wev).join('')||'<p class="wnone">No events on this day.</p>'}</div></section>
+<div class="cg2"><section class="card"><div class="cbar2"><button class="btn" data-ca="cprev" aria-label="Previous month">‹</button><button class="btn" data-ca="ctoday">Today</button><button class="btn" data-ca="cnext" aria-label="Next month">›</button><h2>${label}</h2><span class="mut">Events and tasks in this category</span></div><div class="grid" id="ccal">${g}</div><div class="cdet"><h3>${pd(sel).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'long'})}</h3>${det.map(i=>i.type==='event'?wev(i):wtask(i)).join('')||'<p class="wnone">Nothing on this day.</p>'}</div></section>
 <section class="card"><div class="th"><h2>Tasks<span class="cnt">${open} open</span></h2><label class="chk"><input type="checkbox" id="ccd" ${SHOWCD?'checked':''}> Show completed</label></div>${th||'<p class="mut">No tasks in this category yet.</p>'}</section></div>`;
 }
 function fitNotes(){
@@ -681,13 +681,12 @@ function setType(){
   const ev=E.type==='event',ms=E.type==='master',tk=E.type==='task';
   $('#eew').style.display=ev?'':'none';$('#esw').style.display=ms?'none':'';
   $('#erw').style.display=ev?'':'none';$('#ehint').style.display=ev?'':'none';
-  $('#epart').style.display=tk?'':'none';
   $('#edl').textContent=ms?'Due date (optional)':'Date';
   $('#enl').textContent=ms?'Description':'Notes';
   renderPart();
 }
 function renderPart(){
-  const m=E.type==='task'&&$('#em').value?mt($('#em').value):null;
+  const m=E.type==='task'&&E.master?mt(E.master):null;
   $('#emi').hidden=!m;
   if(m){$('#emi').style.cssText=mc(m);$('#emt').textContent=m.title;$('#emd').textContent=m.date?'Due '+pd(m.date).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'}):'No due date'}
 }
@@ -702,8 +701,7 @@ function openEd(o){
   setT($('#es'),o.start);setT($('#ee'),o.end);$('#eterr').textContent='';['es','ee'].forEach(i=>$('#'+i).classList.remove('bad'));
   $('#erep').checked=!!o.rep;$('#euntil').value=(o.rep&&o.rep.until)||'';
   E.days=new Set(o.rep?o.rep.days:[pd($('#edate').value||today()).getDay()]);
-  $('#em').innerHTML='<option value="">None</option>'+S.items.filter(i=>i.type==='master'&&(!i.done||i.id===o.master)).sort((a,b)=>a.title.localeCompare(b.title)).map(m=>`<option value="${m.id}">${esc(m.title)}</option>`).join('');
-  $('#em').value=o.master||'';
+  E.master=o.master||'';
   document.querySelector(`input[name=ty][value=${E.type}]`).checked=true;
   document.querySelectorAll('input[name=ty]').forEach(r=>{r.disabled=!!E.id&&(E.type==='master'||r.value==='master')});
   setType();renderDays();$('#ec').innerHTML=chips('E');
@@ -844,18 +842,13 @@ function saveEd(){
   const it=E.id?S.items.find(i=>i.id===E.id):null,v={type:E.type,title,date,start,end,rep,cats:[...E.cats],notes:$('#en').value.trim()};
   const isNew=!it;let item=it;
   if(it)Object.assign(it,v);else{item={id:uid(),done:false,...v};S.items.push(item)}
-  if(E.type==='task'&&$('#em').value)item.master=$('#em').value;else delete item.master;
+  if(E.type==='task'&&E.master)item.master=E.master;else delete item.master;
   save();$('#ed').close();render();
   if(isNew&&E.type==='master')openMaster(item.id);
   return item;
 }
 $('#esave').onclick=()=>{saveEd()};
-$('#em').onchange=()=>{
-  const m=mt($('#em').value);
-  if(m&&!E.cats.size){m.cats.forEach(c=>E.cats.add(c));$('#ec').innerHTML=chips('E')}
-  renderPart();
-};
-$('#eopen').onclick=()=>{const id=$('#em').value;if(id&&saveEd())openMaster(id)};
+$('#eopen').onclick=()=>{const id=E.master;if(id&&saveEd())openMaster(id)};
 $('#edel').onclick=()=>{
   if(!E.id)return;
   const b=$('#edel');
